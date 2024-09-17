@@ -55,16 +55,21 @@
            x:Name="edgeDrvCurrVersionText" FontSize="14"/>
 
         <Button Grid.Row="2" Grid.Column="4" x:Name="syncChromeButton"
-        Margin="20" FontSize="14">
+        Margin="20" FontSize="14" Command="{Binding SyncChromeCommand}">
             Sync Chrome
         </Button>
         <Button Grid.Row="3" Grid.Column="4" x:Name="syncFirefoxButton"
-        Margin="20" FontSize="14">
+        Margin="20" FontSize="14" Command="{Binding SyncFirefoxCommand}">
             Sync Firefox
         </Button>
         <Button Grid.Row="4" Grid.Column="4" x:Name="syncEdgeButton"
-        Margin="20" FontSize="14">
+        Margin="20" FontSize="14"  Command="{Binding SyncEdgeCommand}">
             Sync Edge
         </Button>
+        <CheckBox Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="2"
+                  FontSize="14" x:Name="forceDownloadCheck" VerticalAlignment="Center"
+                  IsChecked="{Binding IsSelected}">
+            Force Download
+        </CheckBox>
     </Grid>
 </Window>
