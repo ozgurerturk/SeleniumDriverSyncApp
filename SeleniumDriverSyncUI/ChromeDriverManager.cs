@@ -1,17 +1,12 @@
 ﻿using Microsoft.Win32;
 using Newtonsoft.Json;
 using SeleniumDriverSync.Models;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace SeleniumDriverSyncUI;
@@ -19,6 +14,8 @@ namespace SeleniumDriverSyncUI;
 public class ChromeDriverManager
 {
     private readonly HttpClient httpClient = new();
+
+    private HttpResponseMessage _driverZipResponse = new(HttpStatusCode.OK);
 
     private string ChromeVersion { get; set; }
     private string ZipName { get; set; }
@@ -42,84 +39,19 @@ public class ChromeDriverManager
             return;
         }
 
-        HttpResponseMessage chromeDriverVersionResponse = new(HttpStatusCode.OK);
-        HttpResponseMessage driverZipResponse = new(HttpStatusCode.OK);
+        bool IsFileVaild = await GetDriverZipFile(chromeVersion);
 
-        //If current chrome version is 115 or higher use https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json
-        if (Convert.ToInt32(chromeVersion[..chromeVersion.IndexOf('.')]) > 114)
+        if (IsFileVaild == false)
         {
-            chromeDriverVersionResponse = await httpClient.GetAsync("https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json");
-
-            if (!chromeDriverVersionResponse.IsSuccessStatusCode)
-            {
-                if (chromeDriverVersionResponse.StatusCode == HttpStatusCode.NotFound)
-                {
-                    throw new Exception($"ChromeDriver version not found for Chrome version {chromeVersion}");
-                }
-                else
-                {
-                    throw new Exception($"ChromeDriver version request failed with status code: {chromeDriverVersionResponse.StatusCode}, reason phrase: {chromeDriverVersionResponse.ReasonPhrase}");
-                }
-            }
-
-            var chromeDriverVersionJson = await chromeDriverVersionResponse
-                .Content.ReadAsStringAsync();
-
-            ChromeApiResponseModel? chromeVersionInfo = JsonConvert
-                .DeserializeObject<ChromeApiResponseModel>(chromeDriverVersionJson);
-
-            string? stableBuildDownloadUrl = null;
-
-            List<Versions>? chromedriverVersionList = chromeVersionInfo?.Versions;
-
-            Versions? versions = chromedriverVersionList?.LastOrDefault(v => v.Version.Contains(chromeVersion));
-
-            if (versions == null)
-            {
-                string chV = chromeVersion[..chromeVersion.IndexOf('.')];
-                List<Versions> newVersions = chromedriverVersionList.Where(x => x.Version.StartsWith(chV)).ToList();
-
-                versions = newVersions.FirstOrDefault();
-            }
-
-            if (versions == null)
-            {
-                throw new Exception("Cannot sync chromedriver, please install manually!");
-            }
-
-            var drivers = versions.Downloads.Chromedriver;
-
-            var win64Chromedriver = drivers.FirstOrDefault(d => d.Platform.Contains("win64"));
-
-            if (win64Chromedriver != null)
-            {
-                stableBuildDownloadUrl = win64Chromedriver.Url;
-            }
-            else
-            {
-                // Handle the case where win64Chromedriver is null
-                throw new Exception("Chromedriver cannot be found for this version of google chrome, please" +
-                    "either update the chrome browser to a driver compatible version or if exists install compatible driver manually!");
-            }
-
-            driverZipResponse = await httpClient.GetAsync(stableBuildDownloadUrl);
-        }
-        else
-        {
-            chromeDriverVersionResponse = await httpClient.GetAsync($"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{chromeVersion}");
-            string chromeDriverVersionLatest = await chromeDriverVersionResponse.Content.ReadAsStringAsync();
-
-            driverZipResponse = await httpClient.GetAsync($"https://chromedriver.storage.googleapis.com/{chromeDriverVersionLatest}/{ZipName}");
+            return;
         }
 
-        var chromeDriverVersion = await chromeDriverVersionResponse.Content.ReadAsStringAsync();
-
-        if (!driverZipResponse.IsSuccessStatusCode)
+        if (!_driverZipResponse.IsSuccessStatusCode)
         {
-            throw new Exception($"ChromeDriver download request failed with status code: {driverZipResponse.StatusCode}, reason phrase: {driverZipResponse.ReasonPhrase}");
+            throw new Exception($"ChromeDriver download request failed with status code: {_driverZipResponse.StatusCode}, reason phrase: {_driverZipResponse.ReasonPhrase}");
         }
 
-        bool IsExtractSuccessful = await ExtractAndWrite(driverZipResponse, targetPath);
+        bool IsExtractSuccessful = await ExtractAndWrite(_driverZipResponse, targetPath);
 
         if (IsExtractSuccessful)
         {
@@ -133,7 +65,7 @@ public class ChromeDriverManager
         // on Linux/macOS, you need to add the executable permission (+x) to allow the execution of the chromedriver
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            using (var process = Process.Start(
+            using var process = Process.Start(
                 new ProcessStartInfo
                 {
                     FileName = "chmod",
@@ -143,27 +75,25 @@ public class ChromeDriverManager
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                 }
-            ))
+            );
+            string error = await process.StandardError.ReadToEndAsync();
+
+            try
             {
-                string error = await process.StandardError.ReadToEndAsync();
+                process.WaitForExit();
+                process.Kill();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
 
-                try
-                {
-                    process.WaitForExit();
-                    process.Kill();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
+                return;
+                throw;
+            }
 
-                    return;
-                    throw;
-                }
-
-                if (!string.IsNullOrEmpty(error))
-                {
-                    throw new Exception("Failed to make chromedriver executable");
-                }
+            if (!string.IsNullOrEmpty(error))
+            {
+                throw new Exception("Failed to make chromedriver executable");
             }
         }
 
@@ -228,7 +158,7 @@ public class ChromeDriverManager
         {
             try
             {
-                using (var process = Process.Start(
+                using var process = Process.Start(
                     new ProcessStartInfo
                     {
                         FileName = "google-chrome",
@@ -238,28 +168,26 @@ public class ChromeDriverManager
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                     }
-                ))
+                );
+                string output = await process.StandardOutput.ReadToEndAsync();
+                string error = await process.StandardError.ReadToEndAsync();
+
+                try
                 {
-                    string output = await process.StandardOutput.ReadToEndAsync();
-                    string error = await process.StandardError.ReadToEndAsync();
-
-                    try
-                    {
-                        process.WaitForExit();
-                        process.Kill();
-                    }
-                    catch (Exception)
-                    {
-                        MessageBox.Show("Error when reading version");
-                    }
-
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        throw new Exception(error);
-                    }
-
-                    return output;
+                    process.WaitForExit();
+                    process.Kill();
                 }
+                catch (Exception)
+                {
+                    MessageBox.Show("Error when reading version");
+                }
+
+                if (!string.IsNullOrEmpty(error))
+                {
+                    throw new Exception(error);
+                }
+
+                return output;
             }
             catch (Exception ex)
             {
@@ -352,7 +280,12 @@ public class ChromeDriverManager
 
     private async Task<bool> CheckValidity(string targetPath, string chromeVersion, bool forceDownload)
     {
-        if (File.Exists(targetPath))
+        if (!File.Exists(targetPath) && !forceDownload)
+        {
+            MessageBox.Show($"Cannot find the driver at given path: {targetPath}");
+            return false;
+        }
+        else
         {
             if (!forceDownload)
             {
@@ -412,10 +345,107 @@ public class ChromeDriverManager
                 return true;
             }
         }
+    }
+
+    private async Task<bool> GetDriverZipFile(string chromeVersion)
+    {
+        HttpResponseMessage chromeDriverVersionResponse = new(HttpStatusCode.OK);
+
+        //If current chrome version is 115 or higher use https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json
+        if (Convert.ToInt32(chromeVersion[..chromeVersion.IndexOf('.')]) > 114)
+        {
+            try
+            {
+                chromeDriverVersionResponse = await httpClient.GetAsync("https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json");
+
+                if (!chromeDriverVersionResponse.IsSuccessStatusCode)
+                {
+                    if (chromeDriverVersionResponse.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        throw new Exception($"ChromeDriver version not found for Chrome version {chromeVersion}");
+                    }
+                    else
+                    {
+                        throw new Exception($"ChromeDriver version request failed with status code: {chromeDriverVersionResponse.StatusCode}, reason phrase: {chromeDriverVersionResponse.ReasonPhrase}");
+                    }
+                }
+
+                string chromeDriverVersionJson = await chromeDriverVersionResponse.Content.ReadAsStringAsync();
+
+                ChromeApiResponseModel? chromeVersionInfo = JsonConvert.DeserializeObject<ChromeApiResponseModel>(chromeDriverVersionJson);
+
+                string? stableBuildDownloadUrl = null;
+
+                if (chromeVersionInfo == null)
+                {
+                    throw new Exception("Chrome version info cannot be taken");
+                }
+                else
+                {
+                    if (chromeVersionInfo.Versions != null)
+                    {
+                        List<Versions> chromedriverVersionList = chromeVersionInfo.Versions;
+
+                        Versions? versions = chromedriverVersionList.LastOrDefault(v => v.Version.Contains(chromeVersion));
+
+                        if (versions == null)
+                        {
+                            string chV = chromeVersion[..chromeVersion.IndexOf('.')];
+                            List<Versions> newVersions = chromedriverVersionList.Where(x => x.Version.StartsWith(chV)).ToList();
+
+                            versions = newVersions.FirstOrDefault();
+                        }
+
+                        if (versions == null)
+                        {
+                            throw new Exception("Cannot sync chromedriver, please install manually!");
+                        }
+
+                        List<ChromeDriver>? drivers = versions.Downloads.Chromedriver;
+
+                        ChromeDriver? win64Chromedriver = drivers.FirstOrDefault(d => d.Platform.Contains("win64"));
+
+                        if (win64Chromedriver != null)
+                        {
+                            stableBuildDownloadUrl = win64Chromedriver.Url;
+                        }
+                        else
+                        {
+                            // Handle the case where win64Chromedriver is null
+                            throw new Exception("Chromedriver cannot be found for this version of google chrome, please" +
+                                "either update the chrome browser to a driver compatible version or if exists install compatible driver manually!");
+                        }
+
+                        _driverZipResponse = await httpClient.GetAsync(stableBuildDownloadUrl);
+                        return true;
+                    }
+                    else
+                    {
+                        throw new Exception("Chrome version info cannot be taken");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error when requesting chrome driver versions from api: {ex.Message}");
+                return false;
+            }
+        }
         else
         {
-            MessageBox.Show($"Cannot find the driver at given path: {targetPath}");
-            return false;
+            try
+            {
+                chromeDriverVersionResponse = await httpClient.GetAsync($"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{chromeVersion}");
+                string chromeDriverVersionLatest = await chromeDriverVersionResponse.Content.ReadAsStringAsync();
+
+                _driverZipResponse = await httpClient.GetAsync($"https://chromedriver.storage.googleapis.com/{chromeDriverVersionLatest}/{ZipName}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error when requesting chrome driver versions from api: {ex.Message}");
+                return false;
+            }
         }
     }
 }

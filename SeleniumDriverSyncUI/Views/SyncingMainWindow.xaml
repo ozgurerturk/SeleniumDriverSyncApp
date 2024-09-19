@@ -68,7 +68,7 @@
         </Button>
         <CheckBox Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="2"
                   FontSize="14" x:Name="forceDownloadCheck" VerticalAlignment="Center"
-                  IsChecked="{Binding IsSelected}">
+                  HorizontalAlignment="Center" IsChecked="{Binding IsSelected}">
             Force Download
         </CheckBox>
     </Grid>

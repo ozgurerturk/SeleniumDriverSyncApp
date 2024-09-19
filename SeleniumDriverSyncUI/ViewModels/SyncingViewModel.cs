@@ -1,11 +1,7 @@
 ﻿using SeleniumDriverSyncUI.Commands;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
+using System.IO;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace SeleniumDriverSyncUI.ViewModels;
@@ -46,8 +42,15 @@ public class SyncingViewModel
     {
         ChromeDriverManager chromeDriverManager = new();
 
-        string path = Assembly.GetExecutingAssembly().Location;
+        string? path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-        await chromeDriverManager.CheckandInstall(_isSelected, path);
+        if (!String.IsNullOrEmpty(path))
+        {
+            await chromeDriverManager.CheckandInstall(_isSelected, path);
+        }
+        else
+        {
+            MessageBox.Show("Path finding error");
+        }
     }
 }
