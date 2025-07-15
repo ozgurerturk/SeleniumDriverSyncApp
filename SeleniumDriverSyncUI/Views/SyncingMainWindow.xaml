@@ -6,70 +6,88 @@
         xmlns:local="clr-namespace:SeleniumDriverSyncUI.Views"
         mc:Ignorable="d"
         Title="SyncingMainPage" Height="450" Width="800">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="20" />
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="20" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="20" />
-        </Grid.RowDefinitions>
+	<Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="20" />
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="20" />
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="20" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="20" />
+		</Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="1" Grid.Column="2" Text="Current Version"
+		<TextBlock Grid.Row="1" Grid.Column="2" Text="Current Version"
            Margin="10" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18"/>
-        <TextBlock Grid.Row="1" Grid.Column="3" Text="Driver Version"
+		<TextBlock Grid.Row="1" Grid.Column="3" Text="Driver Version"
            Margin="10" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" />
-        
-        <Image Grid.Row="2" Grid.Column="1" Source="/Images/logo-google-chrome-internet-48031.png" />
-        <Image Grid.Row="3" Grid.Column="1" Source="/Images/ffsonnn.png" />
-        <Image Grid.Row="4" Grid.Column="1" Source="/Images/Edge_son.png" />
+
+		<Image Grid.Row="2" Grid.Column="1" Source="/Images/logo-google-chrome-internet-48031.png" />
+		<Image Grid.Row="3" Grid.Column="1" Source="/Images/ffsonnn.png" />
+		<Image Grid.Row="4" Grid.Column="1" Source="/Images/Edge_son.png" />
 
 
-        <TextBlock Grid.Row="2" Grid.Column="2" Text="--Version--"
+        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding ChromeVersion}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            x:Name="chrCurrVersionText" FontSize="14"/>
-        <TextBlock Grid.Row="2" Grid.Column="3" Text="--Version--"
+        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding ChromeDriverVersion}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            x:Name="chrDrvCurrVersionText" FontSize="14"/>
-        <TextBlock Grid.Row="3" Grid.Column="2" Text="--Version--"
+        <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding FirefoxVersion}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            x:Name="ffoxCurrVersionText" FontSize="14"/>
-        <TextBlock Grid.Row="3" Grid.Column="3" Text="--Version--"
+        <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding GeckoDriverVersion}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            x:Name="ffoxDrvCurrVersionText" FontSize="14"/>
-        <TextBlock Grid.Row="4" Grid.Column="2" Text="--Version--"
+        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding EdgeVersion}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            x:Name="edgeCurrVersionText" FontSize="14"/>
-        <TextBlock Grid.Row="4" Grid.Column="3" Text="--Version--"
+        <TextBlock Grid.Row="4" Grid.Column="3" Text="{Binding EdgeDriverVersion}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            x:Name="edgeDrvCurrVersionText" FontSize="14"/>
 
-        <Button Grid.Row="2" Grid.Column="4" x:Name="syncChromeButton"
+		<Button Grid.Row="2" Grid.Column="4" x:Name="syncChromeButton"
         Margin="20" FontSize="14" Command="{Binding SyncChromeCommand}">
-            Sync Chrome
-        </Button>
-        <Button Grid.Row="3" Grid.Column="4" x:Name="syncFirefoxButton"
+			Sync Chrome
+		</Button>
+		<Button Grid.Row="3" Grid.Column="4" x:Name="syncFirefoxButton"
         Margin="20" FontSize="14" Command="{Binding SyncFirefoxCommand}">
-            Sync Firefox
-        </Button>
-        <Button Grid.Row="4" Grid.Column="4" x:Name="syncEdgeButton"
+			Sync Firefox
+		</Button>
+		<Button Grid.Row="4" Grid.Column="4" x:Name="syncEdgeButton"
         Margin="20" FontSize="14"  Command="{Binding SyncEdgeCommand}">
-            Sync Edge
-        </Button>
-        <CheckBox Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="2"
+			Sync Edge
+		</Button>
+        <CheckBox Grid.Row="1" Grid.Column="4"
                   FontSize="14" x:Name="forceDownloadCheck" VerticalAlignment="Center"
                   HorizontalAlignment="Center" IsChecked="{Binding IsSelected}">
             Force Download
         </CheckBox>
+
+        <TextBlock Grid.Row="5" Grid.Column="1"
+		   Text="Driver Path" FontSize="12"
+	       HorizontalAlignment="Left" VerticalAlignment="Center"/>
+        <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding FilePath}"
+           HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11"
+           Margin="0 0 60 0" IsReadOnly="True" Width="420" MaxWidth="450"/>
+		<Button x:Name="browseButton" Grid.Row="5" Grid.Column="3" Margin="0 0 10 0"
+		   HorizontalAlignment="Right" VerticalAlignment="Center"
+		   Command="{Binding BrowseCommand}" Content="Browse" FontSize="11"/>
+
+        <StatusBar DockPanel.Dock="Bottom" Grid.Row="6" Grid.Column="0"
+                   Grid.ColumnSpan="6">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="12"
+                   Foreground="{Binding StatusFontColor}"/>
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>

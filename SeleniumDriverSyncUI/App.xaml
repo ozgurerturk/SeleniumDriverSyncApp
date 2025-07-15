@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:SeleniumDriverSyncUI"
              StartupUri="Views/SyncingMainWindow.xaml">
     <Application.Resources>
-         
+
     </Application.Resources>
 </Application>
